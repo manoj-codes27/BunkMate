@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BunkMate — Attendance Calculator</title>
+  <meta name="description" content="BunkMate calculates how many classes you can miss while keeping at least 75% attendance.">
+  <meta name="theme-color" content="#F7F7F4">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='26' height='24' rx='3' fill='%23276749'/%3E%3Crect x='9' y='2' width='3' height='7' rx='1' fill='%23F7F7F4'/%3E%3Crect x='20' y='2' width='3' height='7' rx='1' fill='%23F7F7F4'/%3E%3Cpath d='M9.5 18.5l4.5 4.5 9-9.5' fill='none' stroke='%23F7F7F4' stroke-width='3' stroke-linecap='square'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #F7F7F4;
+      --surface: #FFFFFF;
+      --text: #202522;
+      --muted: #70766F;
+      --accent: #276749;
+      --accent-dark: #1E5239;
+      --border: #DADDD6;
+      --success-bg: #EEF5F0;
+      --warn: #8A5A00;
+      --warn-bg: #FBF4E4;
+      --error: #B3261E;
+      --error-bg: #FBEEEC;
+      --radius: 4px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 20px 20px 32px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    main { flex: 1 0 auto; }
+
+    /* Header */
+    .site-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand svg { display: block; flex: none; }
+    .brand-name { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
+    .brand-descriptor { font-size: 0.8125rem; color: var(--muted); line-height: 1.2; }
+    .threshold-note {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 3px 8px;
+      white-space: nowrap;
+    }
+
+    /* Intro */
+    .intro { padding: 28px 0 20px; }
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.625rem, 4.5vw, 2.125rem);
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      font-weight: 650;
+    }
+    .intro p { margin: 0; color: var(--muted); }
+
+    /* Layout */
+    .layout { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+    @media (min-width: 820px) {
+      .layout { grid-template-columns: 5fr 6fr; gap: 24px; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    /* Form */
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 0.9375rem; font-weight: 600; margin-bottom: 2px; }
+    .hint { display: block; font-size: 0.8125rem; color: var(--muted); margin-bottom: 6px; }
+    input[type="text"] {
+      width: 100%;
+      min-height: 44px;
+      padding: 8px 12px;
+      font: inherit;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid #B9BEB5;
+      border-radius: 3px;
+    }
+    input[type="text"]::placeholder { color: #9AA096; }
+    input[aria-invalid="true"] { border-color: var(--error); }
+    .field-error { margin: 6px 0 0; font-size: 0.8125rem; color: var(--error); min-height: 0; }
+    .field-error:empty { display: none; }
+
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 4px; }
+    .btn-primary {
+      flex: 1 1 100%;
+      min-height: 46px;
+      padding: 10px 18px;
+      font: inherit;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+    .btn-link {
+      min-height: 36px;
+      padding: 4px 2px;
+      font: inherit;
+      font-size: 0.875rem;
+      color: var(--muted);
+      background: none;
+      border: none;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      cursor: pointer;
+    }
+    .btn-link:hover { color: var(--text); }
+
+    /* Result */
+    .result-panel { min-height: 120px; }
+    .result-empty { margin: 0; color: var(--muted); font-size: 0.9375rem; }
+
+    .result { border-left: 4px solid var(--accent); padding: 4px 0 4px 16px; }
+    .result.is-success { border-color: var(--accent); }
+    .result.is-warning { border-color: var(--warn); }
+    .result.is-error { border-color: var(--error); }
+
+    .result-label { margin: 0; font-size: 0.875rem; color: var(--muted); }
+    .result-figure { margin: 0; font-size: 2.75rem; line-height: 1.1; font-weight: 650; letter-spacing: -0.02em; }
+    .is-success .result-figure { color: var(--accent); }
+    .is-warning .result-figure { color: var(--warn); }
+    .is-error .result-figure { color: var(--error); }
+    .result-message { margin: 10px 0 0; }
+    .result-note { margin: 8px 0 0; font-size: 0.875rem; color: var(--muted); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0;
+      margin: 16px 0 0;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+    }
+    .stats div { padding: 10px 12px; }
+    .stats div + div { border-left: 1px solid var(--border); }
+    .stats dt { font-size: 0.8125rem; color: var(--muted); }
+    .stats dd { margin: 0; font-size: 1.125rem; font-weight: 600; }
+
+    .disclaimer { margin: 20px 0 0; font-size: 0.75rem; color: var(--muted); max-width: 62ch; }
+
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+
+    @media (max-width: 480px) {
+      .page { padding: 16px 16px 24px; }
+      .panel { padding: 16px; }
+      .intro { padding-top: 22px; }
+      .threshold-note { font-size: 0.75rem; }
+    }
+
+    /* Signature footer */
+    .site-footer {
+      margin-top: 40px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--muted);
+    }
+    .site-footer p { margin: 0; }
+    .signature {
+      font-family: "Snell Roundhand", "Segoe Script", "Bradley Hand", "Lucida Handwriting", "Brush Script MT", cursive;
+      font-size: 1.25rem;
+      line-height: 1;
+      color: var(--text);
+      margin-left: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <div class="brand">
+        <svg width="32" height="32" viewBox="0 0 32 32" role="img" aria-label="BunkMate logo">
+          <rect x="3" y="5" width="26" height="24" rx="3" fill="#276749"></rect>
+          <rect x="9" y="2" width="3" height="7" rx="1" fill="#F7F7F4"></rect>
+          <rect x="20" y="2" width="3" height="7" rx="1" fill="#F7F7F4"></rect>
+          <path d="M9.5 18.5l4.5 4.5 9-9.5" fill="none" stroke="#F7F7F4" stroke-width="3" stroke-linecap="square"></path>
+        </svg>
+        <div>
+          <div class="brand-name">BunkMate</div>
+          <div class="brand-descriptor">Attendance calculator</div>
+        </div>
+      </div>
+      <span class="threshold-note">75% minimum</span>
+    </header>
+
+    <main>
+      <section class="intro">
+        <h1>Know your attendance limits.</h1>
+        <p>Enter your class counts to see how many you can miss.</p>
+      </section>
+
+      <div class="layout">
+        <section class="panel" aria-labelledby="form-heading">
+          <h2 id="form-heading" class="visually-hidden">Class counts</h2>
+          <form id="attendance-form" novalidate>
+            <div class="field">
+              <label for="allocated">Total allocated classes</label>
+              <span class="hint" id="allocated-hint">Planned for the whole semester</span>
+              <input type="text" id="allocated" name="allocated" inputmode="numeric" autocomplete="off" placeholder="e.g. 60" aria-describedby="allocated-hint allocated-error">
+              <p class="field-error" id="allocated-error"></p>
+            </div>
+
+            <div class="field">
+              <label for="held">Classes held so far</label>
+              <span class="hint" id="held-hint">Conducted to date</span>
+              <input type="text" id="held" name="held" inputmode="numeric" autocomplete="off" placeholder="e.g. 40" aria-describedby="held-hint held-error">
+              <p class="field-error" id="held-error"></p>
+            </div>
+
+            <div class="field">
+              <label for="attended">Classes attended</label>
+              <span class="hint" id="attended-hint">Out of the classes held</span>
+              <input type="text" id="attended" name="attended" inputmode="numeric" autocomplete="off" placeholder="e.g. 32" aria-describedby="attended-hint attended-error">
+              <p class="field-error" id="attended-error"></p>
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn-primary">Calculate Bunk Allowance</button>
+              <button type="button" class="btn-link" id="reset-button">Reset</button>
+              <button type="button" class="btn-link" id="example-button">Try example</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel result-panel" aria-labelledby="result-heading">
+          <h2 id="result-heading" class="visually-hidden">Result</h2>
+          <div id="result" aria-live="polite">
+            <p class="result-empty">Your result will appear here.</p>
+          </div>
+          <p class="disclaimer">Results assume every class carries equal weight. Your college's actual attendance rules take precedence.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>crafted by <span class="signature">Mann</span>.</p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var REQUIRED_PERCENTAGE = 75;
+
+      /* ---------- Calculation logic (no DOM access) ---------- */
+
+      // Parses a string as a non-negative whole number. Returns null if invalid.
+      function parseWholeNumber(text) {
+        var trimmed = String(text).trim();
+        if (!/^\d+$/.test(trimmed)) { return null; }
+        var value = Number(trimmed);
+        return Number.isSafeInteger(value) ? value : null;
+      }
+
+      // Validates the three inputs and returns an object of field -> message.
+      function validateInputs(rawAllocated, rawHeld, rawAttended) {
+        var errors = {};
+        var allocated = parseWholeNumber(rawAllocated);
+        var held = parseWholeNumber(rawHeld);
+        var attended = parseWholeNumber(rawAttended);
+
+        if (String(rawAllocated).trim() === '') {
+          errors.allocated = 'Enter the total allocated classes.';
+        } else if (allocated === null) {
+          errors.allocated = 'Use a whole number, with no decimals or negative sign.';
+        } else if (allocated <= 0) {
+          errors.allocated = 'Total allocated classes must be greater than 0.';
+        }
+
+        if (String(rawHeld).trim() === '') {
+          errors.held = 'Enter the classes held so far.';
+        } else if (held === null) {
+          errors.held = 'Use a whole number, with no decimals or negative sign.';
+        }
+
+        if (String(rawAttended).trim() === '') {
+          errors.attended = 'Enter the classes attended.';
+        } else if (attended === null) {
+          errors.attended = 'Use a whole number, with no decimals or negative sign.';
+        }
+
+        // Cross-field checks only when the individual values are valid.
+        if (!errors.allocated && !errors.held && held > allocated) {
+          errors.held = 'Classes held cannot be more than total allocated classes (' + allocated + ').';
+        }
+        if (!errors.held && !errors.attended && attended > held) {
+          errors.attended = 'Classes attended cannot be more than classes held (' + held + ').';
+        }
+
+        return { errors: errors, values: { allocated: allocated, held: held, attended: attended } };
+      }
+
+      // Core calculation. A = allocated, H = held, T = attended, R = remaining.
+      // Integer arithmetic is used so there are no floating-point rounding errors:
+      //   attendance >= 75%   <=>  T / H >= 3/4   <=>  4T >= 3H
+      //   max bunks = floor(T / 0.75 - H) = floor((4T - 3H) / 3)
+      //   classes to recover = ceil((0.75H - T) / 0.25) = 3H - 4T
+      function calculateAttendance(A, H, T) {
+        var remaining = A - H;
+
+        if (H === 0) {
+          return { status: 'no-classes-held', remaining: remaining };
+        }
+
+        var percentage = (T / H) * 100;
+
+        if (4 * T >= 3 * H) {
+          var maximumBunks = Math.floor((4 * T - 3 * H) / 3);
+          var safeBunks = Math.min(maximumBunks, remaining);
+          return {
+            status: 'meets-requirement',
+            percentage: percentage,
+            remaining: remaining,
+            maximumBunks: maximumBunks,
+            safeBunks: safeBunks,
+            cappedByRemaining: maximumBunks > remaining
+          };
+        }
+
+        var classesToRecover = Math.max(0, 3 * H - 4 * T);
+        var canRecover = classesToRecover <= remaining;
+        // Best possible final attendance if every remaining class is attended.
+        var bestPossiblePercentage = ((T + remaining) / A) * 100;
+
+        return {
+          status: canRecover ? 'recoverable' : 'unrecoverable',
+          percentage: percentage,
+          remaining: remaining,
+          classesToRecover: classesToRecover,
+          bestPossiblePercentage: bestPossiblePercentage
+        };
+      }
+
+      /* ---------- DOM handling ---------- */
+
+      var form = document.getElementById('attendance-form');
+      var resultRegion = document.getElementById('result');
+      var fields = {
+        allocated: document.getElementById('allocated'),
+        held: document.getElementById('held'),
+        attended: document.getElementById('attended')
+      };
+      var errorElements = {
+        allocated: document.getElementById('allocated-error'),
+        held: document.getElementById('held-error'),
+        attended: document.getElementById('attended-error')
+      };
+
+      function pluralize(count, singular, plural) {
+        return count === 1 ? singular : plural;
+      }
+
+      function clearFieldErrors() {
+        Object.keys(fields).forEach(function (key) {
+          fields[key].removeAttribute('aria-invalid');
+          errorElements[key].textContent = '';
+        });
+      }
+
+      function showFieldErrors(errors) {
+        var firstInvalid = null;
+        ['allocated', 'held', 'attended'].forEach(function (key) {
+          if (errors[key]) {
+            fields[key].setAttribute('aria-invalid', 'true');
+            errorElements[key].textContent = errors[key];
+            if (!firstInvalid) { firstInvalid = fields[key]; }
+          }
+        });
+        if (firstInvalid) { firstInvalid.focus(); }
+      }
+
+      function makeElement(tag, className, text) {
+        var element = document.createElement(tag);
+        if (className) { element.className = className; }
+        if (text !== undefined) { element.textContent = text; }
+        return element;
+      }
+
+      function makeStats(items) {
+        var list = makeElement('dl', 'stats');
+        items.forEach(function (item) {
+          var wrapper = document.createElement('div');
+          wrapper.appendChild(makeElement('dt', '', item[0]));
+          wrapper.appendChild(makeElement('dd', '', item[1]));
+          list.appendChild(wrapper);
+        });
+        return list;
+      }
+
+      // Builds the result block using textContent only (no innerHTML).
+      function renderResult(config) {
+        var container = makeElement('div', 'result ' + config.tone);
+        container.appendChild(makeElement('p', 'result-label', config.label));
+        container.appendChild(makeElement('p', 'result-figure', config.figure));
+        container.appendChild(makeElement('p', 'result-message', config.message));
+        if (config.note) {
+          container.appendChild(makeElement('p', 'result-note', config.note));
+        }
+        if (config.stats) {
+          container.appendChild(makeStats(config.stats));
+        }
+        resultRegion.replaceChildren(container);
+      }
+
+      function showResult(outcome) {
+        var percentText;
+        var remainingText;
+        var stats;
+
+        if (outcome.status === 'no-classes-held') {
+          renderResult({
+            tone: 'is-warning',
+            label: 'Current attendance',
+            figure: 'Not available yet',
+            message: 'No classes have been held yet, so there is no attendance percentage to calculate. Come back once classes begin.',
+            stats: [['Remaining classes', String(outcome.remaining)], ['Required', REQUIRED_PERCENTAGE + '%']]
+          });
+          return;
+        }
+
+        percentText = outcome.percentage.toFixed(2) + '%';
+        remainingText = String(outcome.remaining);
+        stats = [['Current attendance', percentText], ['Remaining classes', remainingText]];
+
+        if (outcome.status === 'meets-requirement') {
+          if (outcome.remaining === 0) {
+            renderResult({
+              tone: 'is-warning',
+              label: 'Classes you can still miss',
+              figure: '0',
+              message: 'No classes remain in the semester, so no further classes can be bunked. Your final attendance is ' + percentText + '.',
+              stats: stats
+            });
+            return;
+          }
+          if (outcome.safeBunks === 0) {
+            renderResult({
+              tone: 'is-warning',
+              label: 'Classes you can miss',
+              figure: '0',
+              message: 'You are right at the ' + REQUIRED_PERCENTAGE + '% line. Missing even one more class would drop you below it.',
+              stats: stats
+            });
+            return;
+          }
+          renderResult({
+            tone: 'is-success',
+            label: 'Classes you can miss',
+            figure: String(outcome.safeBunks),
+            message: 'You can miss up to ' + outcome.safeBunks + ' more ' + pluralize(outcome.safeBunks, 'class', 'classes') + ' and stay at or above ' + REQUIRED_PERCENTAGE + '%.',
+            note: outcome.cappedByRemaining
+              ? 'Your attendance would allow ' + outcome.maximumBunks + ', but only ' + outcome.remaining + ' ' + pluralize(outcome.remaining, 'class remains', 'classes remain') + ', so the allowance is capped there.'
+              : null,
+            stats: stats
+          });
+          return;
+        }
+
+        if (outcome.status === 'recoverable') {
+          if (outcome.remaining === 0) {
+            // Cannot happen (recoverable requires classesToRecover <= remaining and > 0), kept for safety.
+            return;
+          }
+          renderResult({
+            tone: 'is-warning',
+            label: 'Classes to attend in a row',
+            figure: String(outcome.classesToRecover),
+            message: 'You are below ' + REQUIRED_PERCENTAGE + '%. Attend the next ' + outcome.classesToRecover + ' ' + pluralize(outcome.classesToRecover, 'class', 'classes') + ' without missing any to reach ' + REQUIRED_PERCENTAGE + '%.',
+            stats: stats
+          });
+          return;
+        }
+
+        // Unrecoverable within the remaining allocated classes.
+        var bestText = outcome.bestPossiblePercentage.toFixed(2) + '%';
+        var impossibleMessage = outcome.remaining === 0
+          ? 'You are below ' + REQUIRED_PERCENTAGE + '% and no classes remain, so there is no way to recover. No bunks are possible.'
+          : 'Reaching ' + REQUIRED_PERCENTAGE + '% would take ' + outcome.classesToRecover + ' consecutive ' + pluralize(outcome.classesToRecover, 'class', 'classes') + ', but only ' + outcome.remaining + ' ' + pluralize(outcome.remaining, 'remains', 'remain') + '. It is not possible within the allocated classes.';
+        renderResult({
+          tone: 'is-error',
+          label: 'Cannot reach ' + REQUIRED_PERCENTAGE + '%',
+          figure: String(outcome.classesToRecover) + ' needed',
+          message: impossibleMessage,
+          note: outcome.remaining > 0
+            ? 'Attending every remaining class would bring you to ' + bestText + '. Check with your college about condonation or other options.'
+            : 'Check with your college about condonation or other options.',
+          stats: stats
+        });
+      }
+
+      function handleSubmit(event) {
+        event.preventDefault();
+        clearFieldErrors();
+
+        var validation = validateInputs(fields.allocated.value, fields.held.value, fields.attended.value);
+        if (Object.keys(validation.errors).length > 0) {
+          showFieldErrors(validation.errors);
+          resultRegion.replaceChildren(makeElement('p', 'result-empty', 'Fix the highlighted fields to see a result.'));
+          return;
+        }
+
+        var values = validation.values;
+        showResult(calculateAttendance(values.allocated, values.held, values.attended));
+      }
+
+      function handleReset() {
+        form.reset();
+        clearFieldErrors();
+        resultRegion.replaceChildren(makeElement('p', 'result-empty', 'Your result will appear here.'));
+        fields.allocated.focus();
+      }
+
+      function handleExample() {
+        clearFieldErrors();
+        fields.allocated.value = '60';
+        fields.held.value = '40';
+        fields.attended.value = '32';
+        resultRegion.replaceChildren(makeElement('p', 'result-empty', 'Example filled in. Press Calculate to see the result.'));
+        fields.allocated.focus();
+      }
+
+      form.addEventListener('submit', handleSubmit);
+      document.getElementById('reset-button').addEventListener('click', handleReset);
+      document.getElementById('example-button').addEventListener('click', handleExample);
+    })();
+  </script>
+</body>
+</html>
